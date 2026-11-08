@@ -47,6 +47,7 @@ contextBridge.exposeInMainWorld('calamus', {
   gitStatus: (root) => ipcRenderer.invoke('git:status', root),
   gitScm: (root) => ipcRenderer.invoke('git:scm', root),
   gitLog: (root, limit) => ipcRenderer.invoke('git:log', root, limit),
+  gitTrustRepo: (root) => ipcRenderer.invoke('git:trustRepo', root),
   gitCommitFiles: (root, hash) => ipcRenderer.invoke('git:commitFiles', root, hash),
   gitOp: (op, root, ...args) => {
     const allowed = ['stage', 'stageAll', 'unstage', 'unstageAll', 'discard', 'commit', 'branches', 'checkout', 'createBranch', 'fetch', 'pull', 'push', 'init'];

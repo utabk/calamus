@@ -28,14 +28,20 @@ function run(args, cwd, extendedEnv, timeout = 120000) {
 module.exports = function setupGit({ ipcMain, guard, extendedEnv, folders }) {
   const tops = new Map(); // dir -> toplevel | null
 
-  // Untrusted folders act as "not a repository": git never runs there.
-  async function toplevel(dir) {
-    if (!folders.isTrusted(dir)) return null;
+  // The repository root above `dir`, without the trust check. rev-parse runs no hooks.
+  async function findTop(dir) {
     if (tops.has(dir)) return tops.get(dir);
     const out = await git(['rev-parse', '--show-toplevel'], dir, extendedEnv);
     const top = out ? out.trim() : null;
     tops.set(dir, top);
     return top;
+  }
+  // Untrusted folders act as "not a repository". The repository root must be trusted too:
+  // a trusted subfolder of an untrusted repo would otherwise run git with the repo's config.
+  async function toplevel(dir) {
+    if (!folders.isTrusted(dir)) return null;
+    const top = await findTop(dir);
+    return top && folders.isTrusted(top) ? top : null;
   }
 
   // Returns { repo: false } outside a repo, { repo: true, tracked: false } for new files,
@@ -54,6 +60,8 @@ module.exports = function setupGit({ ipcMain, guard, extendedEnv, folders }) {
   ipcMain.handle('git:scm', async (_e, root) => {
     const dir = guard(root);
     if (!folders.isTrusted(dir)) return { repo: false, untrusted: true };
+    const outer = await findTop(dir);
+    if (outer && !folders.isTrusted(outer)) return { repo: false, untrusted: true, repoRoot: outer };
     const top = await toplevel(dir);
     if (!top) return { repo: false };
     const out = await git(['status', '--porcelain=v2', '--branch', '-z', '--untracked-files=all'], top, extendedEnv);
@@ -176,6 +184,13 @@ module.exports = function setupGit({ ipcMain, guard, extendedEnv, folders }) {
       const rel = parts[parts.length - 1];
       return { path: path.join(top, rel), code: code === 'R' ? 'R' : code === 'A' ? 'A' : code === 'D' ? 'D' : 'M' };
     });
+  });
+  // Trust the repository that contains the open folder (asks with a native dialog).
+  ipcMain.handle('git:trustRepo', async (e, root) => {
+    const dir = guard(root);
+    if (!folders.isTrusted(dir)) return false;
+    const top = await findTop(dir);
+    return top ? folders.ask(e.sender, top, { repo: true }) : false;
   });
   ipcMain.handle('git:init', async (_e, root) => { const dir = guard(root); if (!folders.isTrusted(dir)) return { ok: false, out: '', error: 'Trust this folder first.' }; tops.delete(dir); return run(['init'], dir, extendedEnv); });
 

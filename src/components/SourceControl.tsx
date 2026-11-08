@@ -75,12 +75,17 @@ export function SourceControl() {
   if (!bridge.isDesktop) return <div className="scm">{back}<div className="side-empty"><p>Source control works in the desktop app.</p></div></div>;
   if (!scm) return <div className="scm">{back}<div className="fif-status">Loading…</div></div>;
   if (!scm.repo && scm.untrusted) {
+    const repoRoot = scm.repoRoot;
     return (
       <div className="scm">
         {back}
         <div className="side-empty">
-          <p>This folder is in restricted mode, so git doesn’t run here. Trust it if you know where its files came from.</p>
-          <button className="btn secondary" onClick={() => checkTrust(true)}>Trust folder…</button>
+          {repoRoot
+            ? <p>This folder is inside the repository “{basename(repoRoot)}”, which you haven’t trusted, so git doesn’t run here.</p>
+            : <p>This folder is in restricted mode, so git doesn’t run here. Trust it if you know where its files came from.</p>}
+          <button className="btn secondary" onClick={async () => {
+            if (repoRoot) { if (await bridge.gitTrustRepo(root)) refreshGit(); } else checkTrust(true);
+          }}>{repoRoot ? 'Trust repository…' : 'Trust folder…'}</button>
         </div>
       </div>
     );

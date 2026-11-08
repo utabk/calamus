@@ -6,7 +6,7 @@ export type ReadResult = { binary: boolean; text: string };
 export type GitBaseline = { repo: false } | { repo: true; tracked: false } | { repo: true; tracked: true; text: string };
 export type GitStatus = { top: string; branch: string | null; files: Record<string, string> } | null;
 export type ScmFile = { path: string; code: string };
-export type ScmState = { repo: false; untrusted?: boolean } | { repo: true; top: string; branch: string | null; detached: boolean; upstream: string | null; ahead: number; behind: number; staged: ScmFile[]; changes: ScmFile[]; remotes: string[] };
+export type ScmState = { repo: false; untrusted?: boolean; repoRoot?: string } | { repo: true; top: string; branch: string | null; detached: boolean; upstream: string | null; ahead: number; behind: number; staged: ScmFile[]; changes: ScmFile[]; remotes: string[] };
 export type GitResult = { ok: boolean; out: string; error: string };
 export type GitBranch = { name: string; current: boolean; remote: boolean };
 export type GitCommit = { hash: string; short: string; parents: string[]; author: string; time: number; refs: string[]; head: boolean; subject: string; body: string; incoming: boolean; outgoing: boolean };
@@ -53,6 +53,8 @@ export interface Bridge {
   gitStatus(root: string): Promise<GitStatus>;
   gitScm(root: string): Promise<ScmState>;
   gitLog(root: string, limit?: number): Promise<{ commits: GitCommit[]; more: boolean }>;
+  /** Asks to trust the repository containing the open folder. */
+  gitTrustRepo(root: string): Promise<boolean>;
   gitCommitFiles(root: string, hash: string): Promise<ScmFile[]>;
   gitOp(op: string, root: string, ...args: unknown[]): Promise<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   lspServers(): Promise<LspServerInfo[]>;
@@ -164,6 +166,7 @@ const memBridge: Bridge = {
   async gitStatus() { return null; },
   async gitScm() { return { repo: false }; },
   async gitLog() { return { commits: [], more: false }; },
+  async gitTrustRepo() { return false; },
   async gitCommitFiles() { return []; },
   async gitOp() { return { ok: false, out: '', error: 'Git is available in the desktop app.' }; },
   async lspServers() { return []; },
