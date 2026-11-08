@@ -1,14 +1,52 @@
 // Git integration: HEAD baseline for gutter markers, and porcelain status for the file tree.
 const { execFile } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
 // A repository's own config can name commands for git to run. Calamus runs status and log on
 // its own whenever a folder opens, so it never lets a repo turn on the fsmonitor hook.
 const SAFE = ['-c', 'core.fsmonitor=false'];
 
+// Repositories Calamus has checked, by work tree: git runs with GIT_DIR and GIT_WORK_TREE set to
+// exactly these, so a repo's config (core.worktree) or a .git file can't send it elsewhere.
+const pinned = new Map(); // top -> { gitDir }
+const envIn = (cwd, base) => {
+  const repo = pinned.get(cwd);
+  return repo ? { ...base, GIT_DIR: repo.gitDir, GIT_WORK_TREE: cwd } : base;
+};
+
+const real = (p) => { const abs = path.resolve(p); try { return fs.realpathSync(abs); } catch { return abs; } };
+
+/** The nearest repository above `dir`, found on disk rather than by asking git. */
+function findRepo(dir) {
+  let cur = real(dir);
+  for (;;) {
+    const dotgit = path.join(cur, '.git');
+    let st = null;
+    try { st = fs.statSync(dotgit); } catch { /* keep walking */ }
+    if (st) {
+      let gitDir = dotgit;
+      if (st.isFile()) {
+        // Worktrees and submodules: ".git" is a file naming the real git directory.
+        const m = /^gitdir:\s*(.+?)\s*$/m.exec(fs.readFileSync(dotgit, 'utf8'));
+        if (!m) return null;
+        gitDir = path.resolve(cur, m[1]);
+      } else if (!st.isDirectory()) return null;
+      gitDir = real(gitDir);
+      let commonDir = gitDir;
+      try { commonDir = real(path.resolve(gitDir, fs.readFileSync(path.join(gitDir, 'commondir'), 'utf8').trim())); } catch { /* not a worktree */ }
+      return { top: cur, gitDir, commonDir };
+    }
+    const up = path.dirname(cur);
+    if (up === cur) return null;
+    cur = up;
+  }
+}
+
 function git(args, cwd, extendedEnv) {
   return new Promise((resolve) => {
-    execFile('git', [...SAFE, ...args], { cwd, timeout: 8000, maxBuffer: 32 * 1024 * 1024, env: extendedEnv() }, (err, stdout) => {
+    execFile('git', [...SAFE, ...args], { cwd, timeout: 8000, maxBuffer: 32 * 1024 * 1024, env: envIn(cwd, extendedEnv()) }, (err, stdout) => {
       resolve(err ? null : stdout);
     });
   });
@@ -17,7 +55,7 @@ function git(args, cwd, extendedEnv) {
 /** Like git(), but reports failures. Network commands never prompt (no hanging on credentials). */
 function run(args, cwd, extendedEnv, timeout = 120000) {
   return new Promise((resolve) => {
-    const env = { ...extendedEnv(), GIT_TERMINAL_PROMPT: '0', GIT_ASKPASS: '', SSH_ASKPASS: '', GCM_INTERACTIVE: 'never' };
+    const env = envIn(cwd, { ...extendedEnv(), GIT_TERMINAL_PROMPT: '0', GIT_ASKPASS: '', SSH_ASKPASS: '', GCM_INTERACTIVE: 'never' });
     execFile('git', [...SAFE, ...args], { cwd, timeout, maxBuffer: 32 * 1024 * 1024, env }, (err, stdout, stderr) => {
       if (err) resolve({ ok: false, out: String(stdout || ''), error: String(stderr || err.message || '').trim().slice(0, 2000) });
       else resolve({ ok: true, out: String(stdout || ''), error: String(stderr || '').trim() });
@@ -26,22 +64,16 @@ function run(args, cwd, extendedEnv, timeout = 120000) {
 }
 
 module.exports = function setupGit({ ipcMain, guard, extendedEnv, folders }) {
-  const tops = new Map(); // dir -> toplevel | null
+  const trustedRepo = (repo) => !!repo && [repo.top, repo.gitDir, repo.commonDir].every((p) => folders.isTrusted(p));
 
-  // The repository root above `dir`, without the trust check. rev-parse runs no hooks.
-  async function findTop(dir) {
-    if (tops.has(dir)) return tops.get(dir);
-    const out = await git(['rev-parse', '--show-toplevel'], dir, extendedEnv);
-    const top = out ? out.trim() : null;
-    tops.set(dir, top);
-    return top;
-  }
-  // Untrusted folders act as "not a repository". The repository root must be trusted too:
-  // a trusted subfolder of an untrusted repo would otherwise run git with the repo's config.
+  // Untrusted folders act as "not a repository". The repository's work tree and git
+  // directories must be trusted too, or git would run with config nobody trusted.
   async function toplevel(dir) {
     if (!folders.isTrusted(dir)) return null;
-    const top = await findTop(dir);
-    return top && folders.isTrusted(top) ? top : null;
+    const repo = findRepo(dir);
+    if (!trustedRepo(repo)) return null;
+    pinned.set(repo.top, { gitDir: repo.gitDir });
+    return repo.top;
   }
 
   // Returns { repo: false } outside a repo, { repo: true, tracked: false } for new files,
@@ -60,8 +92,8 @@ module.exports = function setupGit({ ipcMain, guard, extendedEnv, folders }) {
   ipcMain.handle('git:scm', async (_e, root) => {
     const dir = guard(root);
     if (!folders.isTrusted(dir)) return { repo: false, untrusted: true };
-    const outer = await findTop(dir);
-    if (outer && !folders.isTrusted(outer)) return { repo: false, untrusted: true, repoRoot: outer };
+    const outer = findRepo(dir);
+    if (outer && !trustedRepo(outer)) return { repo: false, untrusted: true, repoRoot: outer.top };
     const top = await toplevel(dir);
     if (!top) return { repo: false };
     const out = await git(['status', '--porcelain=v2', '--branch', '-z', '--untracked-files=all'], top, extendedEnv);
@@ -189,10 +221,17 @@ module.exports = function setupGit({ ipcMain, guard, extendedEnv, folders }) {
   ipcMain.handle('git:trustRepo', async (e, root) => {
     const dir = guard(root);
     if (!folders.isTrusted(dir)) return false;
-    const top = await findTop(dir);
-    return top ? folders.ask(e.sender, top, { repo: true }) : false;
+    const repo = findRepo(dir);
+    if (!repo) return false;
+    // Never offer to trust the whole disk or home folder through a repository found above.
+    const home = real(os.homedir());
+    if ([repo.top, repo.gitDir, repo.commonDir].some((p) => p === path.parse(p).root || p === home)) return false;
+    for (const p of new Set([repo.top, repo.gitDir, repo.commonDir])) {
+      if (!folders.isTrusted(p) && !(await folders.ask(e.sender, p, { repo: true }))) return false;
+    }
+    return true;
   });
-  ipcMain.handle('git:init', async (_e, root) => { const dir = guard(root); if (!folders.isTrusted(dir)) return { ok: false, out: '', error: 'Trust this folder first.' }; tops.delete(dir); return run(['init'], dir, extendedEnv); });
+  ipcMain.handle('git:init', async (_e, root) => { const dir = guard(root); if (!folders.isTrusted(dir)) return { ok: false, out: '', error: 'Trust this folder first.' }; return run(['init'], dir, extendedEnv); });
 
   ipcMain.handle('git:status', async (_e, root) => {
     const dir = guard(root);
