@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('calamus', {
   platform: process.platform,
   openFolder: () => ipcRenderer.invoke('fs:openFolder'),
   restoreFolder: (root) => ipcRenderer.invoke('fs:restoreFolder', root),
+  isTrusted: (root) => ipcRenderer.invoke('fs:isTrusted', root),
+  requestTrust: (root) => ipcRenderer.invoke('fs:requestTrust', root),
   openFiles: () => ipcRenderer.invoke('fs:openFiles'),
   // Paths of files or folders dropped on the window: [{ path, dir }].
   dropped: (files) => {

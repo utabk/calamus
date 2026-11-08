@@ -4,7 +4,7 @@ import {
   ChevronLeft, GitBranch, Plus, Minus, Undo2, RefreshCw, ArrowUp, ArrowDown, Check, ChevronDown, FileDiff,
 } from 'lucide-react';
 import { bridge, basename, dirname, relative, type ScmFile, type GitBranch as Branch, type GitCommit } from '../lib/bridge';
-import { useStore, setState, getState, gitOp, promptText, openPath, refreshGit, toast, findBufferByPath } from '../store';
+import { useStore, setState, getState, gitOp, promptText, openPath, refreshGit, toast, findBufferByPath, checkTrust } from '../store';
 import { IconButton, useMenu, type MenuItem } from './ui';
 import { fileIcon } from './Sidebar';
 
@@ -74,6 +74,17 @@ export function SourceControl() {
   if (!root) return <div className="scm">{back}<div className="side-empty"><p>Open a folder to use source control.</p></div></div>;
   if (!bridge.isDesktop) return <div className="scm">{back}<div className="side-empty"><p>Source control works in the desktop app.</p></div></div>;
   if (!scm) return <div className="scm">{back}<div className="fif-status">Loading…</div></div>;
+  if (!scm.repo && scm.untrusted) {
+    return (
+      <div className="scm">
+        {back}
+        <div className="side-empty">
+          <p>This folder is in restricted mode, so git doesn’t run here. Trust it if you know where its files came from.</p>
+          <button className="btn secondary" onClick={() => checkTrust(true)}>Trust folder…</button>
+        </div>
+      </div>
+    );
+  }
   if (!scm.repo) {
     return (
       <div className="scm">

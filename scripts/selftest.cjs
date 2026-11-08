@@ -28,6 +28,6 @@ console.log(line);
 const res = JSON.parse(line.replace(/^SELFTEST /, ''));
 const ok = res.ui === 'rendered' && res.initial === dir && res.read === 'hello' && res.reread === 'changed'
   && JSON.stringify(res.list) === JSON.stringify(['a.txt', 'sub/b.md'])
-  && res.dir.includes('renamed.ts') && res.watch === 'fired' && res.pty === 'ok' && res.gitBaseline === 'hello' && /M/.test(res.git) && res.lsp === 'initialized' && res.commit === 'ok' && res.branch === 'feature/x' && res.push === 'origin/feature/x' && res.ahead === 1 && /^second\|true\|feature\/x\|[1-9]/.test(res.history) && res.checkout === 'main' && res.branches === 'feature/x,main' && res.userFiles === 'ok' && res.guard === 'blocked' && res.guard2 === 'blocked';
+  && res.dir.includes('renamed.ts') && res.watch === 'fired' && res.pty === 'ok' && res.gitBaseline === 'hello' && /M/.test(res.git) && res.lsp === 'initialized' && res.commit === 'ok' && res.branch === 'feature/x' && res.push === 'origin/feature/x' && res.ahead === 1 && /^second\|true\|feature\/x\|[1-9]/.test(res.history) && res.checkout === 'main' && res.branches === 'feature/x,main' && res.userFiles === 'ok' && res.restoreForeign === null && res.trusted === true && res.guard === 'blocked' && res.guard2 === 'blocked';
 console.log(ok ? 'PASS' : 'FAIL');
 process.exit(ok ? 0 : 1);

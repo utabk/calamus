@@ -181,6 +181,7 @@ export function EditorPane({ groupId, buffer, hidden }: { groupId: string; buffe
   const settings = useStore((s) => s.settings);
   const bufferIds = useStore((s) => s.buffers);
   const root = useStore((s) => s.root);
+  const trusted = useStore((s) => s.trusted);
 
   // Create the view once.
   useEffect(() => {
@@ -260,7 +261,7 @@ export function EditorPane({ groupId, buffer, hidden }: { groupId: string; buffe
       if (alive && ext && current.current === bufferId && viewRef.current) viewRef.current.dispatch({ effects: lspC.reconfigure(ext) });
     });
     return () => { alive = false; };
-  }, [bufferId, bufferPath, bufferName, root, settings.languageServers]);
+  }, [bufferId, bufferPath, bufferName, root, settings.languageServers, trusted]);
 
   // Inline diff against HEAD (Source Control → Open changes, or the subbar toggle).
   const diffOn = useStore((s) => (bufferId ? !!s.diffView[bufferId] : false));

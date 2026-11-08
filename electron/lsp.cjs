@@ -38,7 +38,7 @@ const SERVERS = {
   go: { name: 'Go (gopls)', languages: ['go'], cmd: 'gopls', args: [], install: 'go install golang.org/x/tools/gopls@latest' },
 };
 
-module.exports = function setupLsp({ ipcMain, guard, extendedEnv }) {
+module.exports = function setupLsp({ ipcMain, guard, extendedEnv, folders }) {
   const procs = new Map(); // id -> { child, sender }
   let nextId = 1;
 
@@ -65,9 +65,13 @@ module.exports = function setupLsp({ ipcMain, guard, extendedEnv }) {
   });
 
   ipcMain.handle('lsp:start', (e, key, root) => {
+    const cwd = root ? guard(root) : undefined;
+    // Language servers read the project and some run its code (rust-analyzer runs build
+    // scripts), so they start only in trusted folders. A loose file gets the built-in
+    // TypeScript server only.
+    if (cwd ? !folders.isTrusted(cwd) : !SERVERS[key]?.bundled) return null;
     const cfg = resolveServer(key);
     if (!cfg) return null;
-    const cwd = root ? guard(root) : undefined;
     const child = spawn(cfg.command, cfg.args, { cwd, env: { ...extendedEnv(), ...cfg.env }, stdio: ['pipe', 'pipe', 'pipe'] });
     const id = nextId++;
     const sender = e.sender;

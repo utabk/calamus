@@ -6,7 +6,7 @@ export type ReadResult = { binary: boolean; text: string };
 export type GitBaseline = { repo: false } | { repo: true; tracked: false } | { repo: true; tracked: true; text: string };
 export type GitStatus = { top: string; branch: string | null; files: Record<string, string> } | null;
 export type ScmFile = { path: string; code: string };
-export type ScmState = { repo: false } | { repo: true; top: string; branch: string | null; detached: boolean; upstream: string | null; ahead: number; behind: number; staged: ScmFile[]; changes: ScmFile[]; remotes: string[] };
+export type ScmState = { repo: false; untrusted?: boolean } | { repo: true; top: string; branch: string | null; detached: boolean; upstream: string | null; ahead: number; behind: number; staged: ScmFile[]; changes: ScmFile[]; remotes: string[] };
 export type GitResult = { ok: boolean; out: string; error: string };
 export type GitBranch = { name: string; current: boolean; remote: boolean };
 export type GitCommit = { hash: string; short: string; parents: string[]; author: string; time: number; refs: string[]; head: boolean; subject: string; body: string; incoming: boolean; outgoing: boolean };
@@ -17,6 +17,10 @@ export interface Bridge {
   isDesktop: boolean;
   platform: string;
   openFolder(): Promise<string | null>;
+  /** Whether git and language servers may run in this folder. */
+  isTrusted(root: string): Promise<boolean>;
+  /** Asks the user (native dialog) to trust the folder; true when trusted. */
+  requestTrust(root: string): Promise<boolean>;
   dropped(files: File[]): Promise<{ path: string; dir: boolean }[]>;
   restoreFolder(root: string): Promise<string | null>;
   openFiles(): Promise<string[]>;
@@ -94,6 +98,8 @@ const memBridge: Bridge = {
   isDesktop: false,
   platform: 'web',
   async openFolder() { return DEMO_ROOT; },
+  async isTrusted() { return true; },
+  async requestTrust() { return true; },
   async dropped() { return []; },
   async restoreFolder(root) { return root === DEMO_ROOT ? root : null; },
   async openFiles() { return []; },

@@ -288,7 +288,7 @@ src/styles/     design tokens (light and dark) and the stylesheet
 
 Builds go to `release.nosync/`. `.github/workflows/build.yml` builds every platform on its own
 runner. Run it from the Actions tab to get the installers as artifacts, or push a tag
-(`git tag v0.1.0 && git push --tags`) to create a draft release with all of them attached.
+(`git tag v0.1.0 && git push --tags`) to publish a release with all of them attached.
 
 ### Signing
 

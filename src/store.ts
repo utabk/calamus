@@ -88,6 +88,8 @@ export type State = {
   settingsOpen: SettingsSection | null;
   /** Bumped by “Git: Commit…” to open the commit message box. */
   scmCompose: number;
+  /** The open folder is trusted: git and language servers may run there. */
+  trusted: boolean;
   git: { branch: string | null; files: Record<string, string> } | null;
   scm: ScmState | null;
   diffView: Record<string, boolean>; // bufferId -> inline diff against HEAD shown
@@ -129,6 +131,7 @@ let state: State = {
   panel: { open: false, height: 260, tabs: [], active: null, maximized: false },
   settingsOpen: null,
   scmCompose: 0,
+  trusted: false,
   git: null,
   scm: null,
   diffView: {},
@@ -631,6 +634,17 @@ export async function openUserFile(kind: 'settings' | 'keybindings') {
 
 // ---------- git status for the tree ----------
 let gitTimer: number | undefined;
+/** Check (and with `ask`, request) trust for the open folder, then refresh git. */
+export async function checkTrust(ask: boolean) {
+  const root = state.root;
+  if (!root) { setState({ trusted: false }); return; }
+  let trusted = await bridge.isTrusted(root).catch(() => false);
+  if (!trusted && ask) trusted = await bridge.requestTrust(root).catch(() => false);
+  if (state.root !== root) return;
+  setState({ trusted });
+  refreshGit();
+}
+
 export function refreshGit() {
   window.clearTimeout(gitTimer);
   gitTimer = window.setTimeout(async () => {

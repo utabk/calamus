@@ -2,9 +2,13 @@
 const { execFile } = require('node:child_process');
 const path = require('node:path');
 
+// A repository's own config can name commands for git to run. Calamus runs status and log on
+// its own whenever a folder opens, so it never lets a repo turn on the fsmonitor hook.
+const SAFE = ['-c', 'core.fsmonitor=false'];
+
 function git(args, cwd, extendedEnv) {
   return new Promise((resolve) => {
-    execFile('git', args, { cwd, timeout: 8000, maxBuffer: 32 * 1024 * 1024, env: extendedEnv() }, (err, stdout) => {
+    execFile('git', [...SAFE, ...args], { cwd, timeout: 8000, maxBuffer: 32 * 1024 * 1024, env: extendedEnv() }, (err, stdout) => {
       resolve(err ? null : stdout);
     });
   });
@@ -14,17 +18,19 @@ function git(args, cwd, extendedEnv) {
 function run(args, cwd, extendedEnv, timeout = 120000) {
   return new Promise((resolve) => {
     const env = { ...extendedEnv(), GIT_TERMINAL_PROMPT: '0', GIT_ASKPASS: '', SSH_ASKPASS: '', GCM_INTERACTIVE: 'never' };
-    execFile('git', args, { cwd, timeout, maxBuffer: 32 * 1024 * 1024, env }, (err, stdout, stderr) => {
+    execFile('git', [...SAFE, ...args], { cwd, timeout, maxBuffer: 32 * 1024 * 1024, env }, (err, stdout, stderr) => {
       if (err) resolve({ ok: false, out: String(stdout || ''), error: String(stderr || err.message || '').trim().slice(0, 2000) });
       else resolve({ ok: true, out: String(stdout || ''), error: String(stderr || '').trim() });
     });
   });
 }
 
-module.exports = function setupGit({ ipcMain, guard, extendedEnv }) {
+module.exports = function setupGit({ ipcMain, guard, extendedEnv, folders }) {
   const tops = new Map(); // dir -> toplevel | null
 
+  // Untrusted folders act as "not a repository": git never runs there.
   async function toplevel(dir) {
+    if (!folders.isTrusted(dir)) return null;
     if (tops.has(dir)) return tops.get(dir);
     const out = await git(['rev-parse', '--show-toplevel'], dir, extendedEnv);
     const top = out ? out.trim() : null;
@@ -47,6 +53,7 @@ module.exports = function setupGit({ ipcMain, guard, extendedEnv }) {
   // Full source-control state: branch, upstream, ahead/behind, staged and unstaged files.
   ipcMain.handle('git:scm', async (_e, root) => {
     const dir = guard(root);
+    if (!folders.isTrusted(dir)) return { repo: false, untrusted: true };
     const top = await toplevel(dir);
     if (!top) return { repo: false };
     const out = await git(['status', '--porcelain=v2', '--branch', '-z', '--untracked-files=all'], top, extendedEnv);
@@ -170,7 +177,7 @@ module.exports = function setupGit({ ipcMain, guard, extendedEnv }) {
       return { path: path.join(top, rel), code: code === 'R' ? 'R' : code === 'A' ? 'A' : code === 'D' ? 'D' : 'M' };
     });
   });
-  ipcMain.handle('git:init', async (_e, root) => { const dir = guard(root); tops.delete(dir); return run(['init'], dir, extendedEnv); });
+  ipcMain.handle('git:init', async (_e, root) => { const dir = guard(root); if (!folders.isTrusted(dir)) return { ok: false, out: '', error: 'Trust this folder first.' }; tops.delete(dir); return run(['init'], dir, extendedEnv); });
 
   ipcMain.handle('git:status', async (_e, root) => {
     const dir = guard(root);

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { bridge, isMac, isWindows } from './lib/bridge';
 import {
-  useStore, setState, getState, restoreSession, saveSession, openFolder, openPath, activeView, setRoot,
+  useStore, setState, getState, restoreSession, saveSession, openFolder, openPath, activeView, setRoot, checkTrust,
   handleExternalChange, autoSaveAll, subscribe, initUserFiles, onKeybindingsChange, refreshGit, views,
 } from './store';
 import { runCommand } from './commands';
@@ -59,6 +59,8 @@ function useTheme() {
   }, [uiFont, headingFont]);
 }
 
+const trustAsked = new Set<string>();
+
 export function App() {
   useTheme();
   const sidebar = useStore((s) => s.sidebar);
@@ -72,6 +74,15 @@ export function App() {
   const treeVersion = useStore((s) => s.treeVersion);
   const [ready, setReady] = useState(false);
   const inputMenu = useMenu();
+
+  // Workspace trust: ask once per folder per launch; a folder left in restricted mode can be
+  // trusted later from Source Control.
+  useEffect(() => {
+    if (!root) { setState({ trusted: false }); return; }
+    const ask = !trustAsked.has(root);
+    trustAsked.add(root);
+    checkTrust(ask);
+  }, [root]);
 
   // Restore the last session (folders, tabs and unsaved text), or open the sample in the browser.
   useEffect(() => {

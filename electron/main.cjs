@@ -20,6 +20,8 @@ const MAX_READ = 8 * 1024 * 1024;
  *  (or be a file the user picked through a dialog), so a compromised renderer cannot roam the disk. */
 const allowedRoots = new Set();
 const allowedFiles = new Set();
+const folders = require('./folders.cjs')({ app, dialog, BrowserWindow });
+if (process.env.CALAMUS_SELFTEST) folders.trust(process.env.CALAMUS_SELFTEST);
 
 function isAllowed(p) {
   const abs = path.resolve(p);
@@ -143,6 +145,8 @@ function runSelfTest(win) {
       const k = window.calamus, root = ${JSON.stringify(process.env.CALAMUS_SELFTEST)}, out = {};
       try {
       out.initial = await k.initialFolder();
+      out.restoreForeign = await k.restoreFolder('/usr');  // never opened: must be refused
+      out.trusted = await k.isTrusted(root);
       // The interface must actually render (this is what a blank window would fail).
       out.ui = await new Promise((res) => {
         const t0 = Date.now();
@@ -263,18 +267,26 @@ ipcMain.handle('fs:openFolder', async (e) => {
   if (r.canceled || !r.filePaths[0]) return null;
   const root = path.resolve(r.filePaths[0]);
   allowedRoots.add(root);
+  folders.grant(root);
   app.addRecentDocument(root);
   return root;
 });
 ipcMain.handle('fs:restoreFolder', async (_e, root) => {
-  // Re-grant a folder from the previous session only if it still exists and is a directory.
+  // Reopen a folder from an earlier session (or the recent list) only if the user opened it
+  // before; the list lives in the main process, so the page can't grant itself other folders.
+  if (typeof root !== 'string' || !root) return null;
+  const abs = path.resolve(root);
+  if (!folders.isGranted(abs)) return null;
   try {
-    const st = await fs.stat(root);
+    const st = await fs.stat(abs);
     if (!st.isDirectory()) return null;
-    allowedRoots.add(path.resolve(root));
-    return path.resolve(root);
+    allowedRoots.add(abs);
+    return abs;
   } catch { return null; }
 });
+// Workspace trust: git and language servers only run in folders the user trusted.
+ipcMain.handle('fs:isTrusted', (_e, root) => folders.isTrusted(guard(root)));
+ipcMain.handle('fs:requestTrust', (e, root) => folders.ask(e.sender, guard(root)));
 // Files and folders dropped on the window. The preload resolves the paths from the dropped
 // File objects (a page can't forge those), so dropping counts as choosing them in a dialog.
 ipcMain.handle('fs:grantDropped', async (_e, paths) => {
@@ -284,7 +296,7 @@ ipcMain.handle('fs:grantDropped', async (_e, paths) => {
     const abs = path.resolve(p);
     try {
       const st = await fs.stat(abs);
-      if (st.isDirectory()) allowedRoots.add(abs); else if (st.isFile()) allowedFiles.add(abs); else continue;
+      if (st.isDirectory()) { allowedRoots.add(abs); folders.grant(abs); } else if (st.isFile()) allowedFiles.add(abs); else continue;
       out.push({ path: abs, dir: st.isDirectory() });
     } catch { /* gone */ }
   }
@@ -373,7 +385,7 @@ for (const arg of process.argv.slice(isDev ? 2 : 1)) {
   if (!arg || arg.startsWith('-') || arg === '.') continue;
   try {
     const abs = path.resolve(arg);
-    if (require('node:fs').statSync(abs).isDirectory()) { initialFolder = abs; allowedRoots.add(abs); break; }
+    if (require('node:fs').statSync(abs).isDirectory()) { initialFolder = abs; allowedRoots.add(abs); folders.grant(abs); break; }
   } catch { /* not a path */ }
 }
 ipcMain.handle('app:initialFolder', () => initialFolder);
@@ -383,8 +395,8 @@ ipcMain.handle('shell:open', (_e, url) => { if (/^https?:\/\//.test(String(url))
 ipcMain.handle('app:info', () => ({ version: app.getVersion(), electron: process.versions.electron, chrome: process.versions.chrome, node: process.versions.node, platform: process.platform, arch: process.arch, userData: app.getPath('userData') }));
 
 const ptyMgr = require('./pty.cjs')({ ipcMain, extendedEnv });
-require('./git.cjs')({ ipcMain, guard, extendedEnv });
-const lspMgr = require('./lsp.cjs')({ ipcMain, guard, extendedEnv });
+require('./git.cjs')({ ipcMain, guard, extendedEnv, folders });
+const lspMgr = require('./lsp.cjs')({ ipcMain, guard, extendedEnv, folders });
 require('./userfiles.cjs')({ ipcMain, app, allowedFiles });
 app.on('before-quit', () => { quitting = true; });
 app.on('will-quit', () => { ptyMgr.killAll(); lspMgr.killAll(); });
