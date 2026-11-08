@@ -1,0 +1,258 @@
+/* Calamus design tokens.
+   Colour roles, type scale, spacing, radii and motion for light and dark mode. */
+
+:root {
+  /* type */
+  /* System fonts by default; "uiFont" / "headingFont" in settings.json put an installed font first. */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-serif: ui-serif, "New York", Georgia, "Times New Roman", serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --fs-caption: 12px;
+  --fs-body: 14px;
+  --fs-prose: 15px;
+  --lh-body: 20px;
+  --fw-normal: 400;
+  --fw-control: 435;
+  --fw-header: 520;
+  --radius-card: 12px;
+  --dur-slow: .45s;
+  /* button spring (release after a press) */
+  --btn-spring: linear(0, .2459, .6526, .9468, 1.0764, 1.0915, 1.0585, 1.0219, .9993, .9914, .9921, .9957, .9988, 1.0004, 1);
+
+  /* sizes */
+  --h-control: 28px;
+  --h-control-nested: 22px;
+  --icon: 20px;
+  --icon-sm: 16px;
+  --h-toolbar: 44px;
+  --h-subbar: 40px;
+  --w-traffic: 78px;
+
+
+  /* spacing */
+  --pad-xs: 4px;
+  --pad-sm: 8px;
+  --pad-md: 12px;
+  --pad-lg: 16px;
+  --pad-xl: 24px;
+  --gap-xs: 8px; /* comfortable density */
+  --gap-sm: 12px;
+
+  /* radius */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-composer: 14px;
+  --menu-gutter: 6px;
+
+  /* motion */
+  --ease-out: cubic-bezier(.165, .84, .44, 1);
+  --ease-snap: cubic-bezier(.32, .72, 0, 1);
+  --ease-overshoot: cubic-bezier(.34, 1.3, .64, 1);
+  --dur-fast: 60ms;
+  --dur-snap: 120ms;
+  --dur-base: 200ms;
+  --dur-sheet: 300ms;
+
+  /* fixed brand-neutral hues (git, status) */
+  --accent: #257de0;
+  --accent-hover: #2171ca;
+  --danger-fill: #dc3c3d;
+  --success-fill: #10a122;
+  --warning-fill: #fbb315;
+}
+
+/* code-theme slots: Calamus's mapping by default; other code themes override them inline.
+   Declared on every [data-mode] scope so a nested preview recomputes them. */
+:root,
+[data-mode] {
+  --editor-bg: var(--surface);
+  --syn-storage: var(--syn-keyword);
+  --syn-constant: var(--syn-number);
+  --syn-tag: var(--syn-property);
+  --syn-variable: var(--code-fg);
+  --syn-operator: var(--code-fg);
+  --syn-self: var(--syn-keyword);
+  --syn-heading: var(--syn-function);
+  --syn-link: var(--syn-number);
+  --syn-css-prop: var(--syn-property);
+  --syn-css-class: var(--syn-attr);
+  --syn-css-value: var(--syn-number);
+  --syn-json-key: var(--syn-property);
+  --syn-comment-style: normal;
+}
+
+/* ---------- light (default) ---------- */
+:root,
+[data-mode="light"] {
+  color-scheme: light;
+  --page-bg: #f9f9f9;
+  --toolbar-bg: #fafafa;
+  --sidebar-tint: rgb(255 255 255 / 28%);
+  --surface: #ffffff;
+  --surface-popover: #ffffff;
+  --surface-sunken: #f9f9f9;
+
+  --alpha-1: rgb(0 0 0 / 5%);
+  --alpha-2: rgb(0 0 0 / 10%);
+  --alpha-3: rgb(11 11 11 / 20%);
+  --border: rgb(0 0 0 / 8%);
+  --divider: rgb(0 0 0 / 10%);
+  --border-strong: rgb(11 11 11 / 20%);
+  --border-input: #8a8a8a;
+
+  --text: rgb(0 0 0 / 90%);
+  --text-secondary: rgb(0 0 0 / 60%);
+  --text-muted: rgb(0 0 0 / 46.7%);
+
+  --fill-primary: #191919;
+  --fill-primary-hover: #3c3c3c;
+  --on-primary: #ffffff;
+  --fill-secondary: rgb(0 0 0 / 5%);
+  --fill-secondary-hover: rgb(0 0 0 / 7.5%);
+  --fill-field: rgb(255 255 255 / 50%);
+  --fill-ghost-hover: rgb(0 0 0 / 5%);
+  --fill-ghost-selected: rgb(0 0 0 / 10%);
+  --fill-control: rgb(11 11 11 / 10%);
+  --bg-neutral: rgb(11 11 11 / 5%);
+  --bg-accent: rgb(37 125 224 / 12%);
+
+  --text-accent: #1757ac;
+  --text-danger: #a42528;
+  --text-success: #006c10;
+  --text-warning: #794c02;
+  --git-added: #1e9e3c;
+  --git-removed: #cd2054;
+  --git-modified: #98801f;
+
+  --tooltip-bg: #0b0b0b;
+  --on-tooltip: #ffffff;
+  --backdrop: rgb(0 0 0 / 40%);
+  --shortcut-ink: #6b6b6b;
+  --switch-track: rgb(11 11 11 / 20%);
+  --switch-track-hover: rgb(11 11 11 / 35%);
+
+  --shadow-sm: 0 1px 2px 0 rgb(11 11 11 / 6%), 0 2px 8px 0 rgb(11 11 11 / 8%);
+  --shadow-md: 0 2px 4px 0 rgb(11 11 11 / 7%), 0 6px 16px 0 rgb(11 11 11 / 8%);
+  --shadow-lg: 0 4px 8px 0 rgb(11 11 11 / 8%), 0 12px 28px -2px rgb(11 11 11 / 8%);
+  --shadow-popover: 0 8px 24px #0000001f, 0 2px 6px #00000014;
+  /* panel shadows: menus/popovers and dialogs, hairline ring included */
+  --shadow-panel: 0 0 0 1px rgb(0 0 0 / 8%), 0 8px 24px rgb(0 0 0 / 12%), 0 2px 6px rgb(0 0 0 / 8%);
+  --shadow-panel-lg: 0 0 0 1px rgb(0 0 0 / 8%), 0 4px 8px rgb(11 11 11 / 8%), 0 12px 28px -2px rgb(11 11 11 / 8%);
+  --bg-danger: #dc3c3d1f;
+  --danger-fill-hover: #c63637;
+
+  --code-selection: #0073e640;
+  --code-selection-match: #0073e61a;
+  --code-line: #1a1a1a0a;
+  --code-find: #ffd5008c;
+  --code-find-other: #ffd50040;
+  --code-gutter: #a4a4a4;
+  --code-gutter-active: #1a1a1a;
+  --code-cursor: #0073e6;
+
+  /* code tokens: Calamus Light */
+  --code-fg: #14181f;
+  --syn-comment: #6e7687;
+  --syn-punct: #2b303b;
+  --syn-keyword: #8100c2;
+  --syn-string: #008000;
+  --syn-regex: #078307;
+  --syn-number: #008080;
+  --syn-property: #b80a18;
+  --syn-attr: #bd0f1e;
+  --syn-function: #0051c2;
+  --syn-type: #b24a00;
+  --syn-param: #b84f05;
+  /* bracket pair colours by depth */
+  --bracket-1: #945d00;
+  --bracket-2: #ad3d66;
+  --bracket-3: #0e6e53;
+}
+/* ---------- dark ---------- */
+[data-mode="dark"] {
+  color-scheme: dark;
+  --page-bg: #0b0b0b;
+  --toolbar-bg: #141414;
+  --sidebar-tint: rgb(20 20 20 / 30%);
+  --surface: #191919;
+  --surface-popover: #303030;
+  --surface-sunken: #141414;
+
+  --alpha-1: rgb(255 255 255 / 5%);
+  --alpha-2: rgb(255 255 255 / 10%);
+  --alpha-3: rgb(255 255 255 / 20%);
+  --border: rgb(255 255 255 / 8%);
+  --divider: rgb(255 255 255 / 8%);
+  --border-strong: rgb(255 255 255 / 20%);
+  --border-input: #7a7a7a;
+
+  --text: rgb(255 255 255 / 93%);
+  --text-secondary: rgb(255 255 255 / 57%);
+  --text-muted: rgb(255 255 255 / 40%);
+
+  --fill-primary: #efefef;
+  --fill-primary-hover: #d7d7d7;
+  --on-primary: #0b0b0b;
+  --fill-secondary: rgb(255 255 255 / 15%);
+  --fill-secondary-hover: rgb(255 255 255 / 21.6%);
+  --fill-field: rgb(255 255 255 / 5%);
+  --fill-ghost-hover: rgb(255 255 255 / 7.5%);
+  --fill-ghost-selected: rgb(255 255 255 / 15%);
+  --fill-control: rgb(255 255 255 / 10%);
+  --bg-neutral: rgb(255 255 255 / 5%);
+  --bg-accent: rgb(37 125 224 / 12%);
+
+  --text-accent: #6aabf1;
+  --text-danger: #f17778;
+  --text-success: #53c556;
+  --text-warning: #e49c06;
+  --git-added: #32d74b;
+  --git-removed: #ff2c56;
+  --git-modified: #ffd014;
+
+  --tooltip-bg: #303030;
+  --on-tooltip: #ffffff;
+  --backdrop: rgb(0 0 0 / 50%);
+  --shortcut-ink: #a4a4a4;
+  --switch-track: rgb(255 255 255 / 10%);
+  --switch-track-hover: rgb(255 255 255 / 20%);
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 30%), 0 2px 8px 0 rgb(0 0 0 / 30%);
+  --shadow-md: 0 2px 4px 0 rgb(0 0 0 / 35%), 0 6px 16px 0 rgb(0 0 0 / 35%);
+  --shadow-lg: 0 4px 8px 0 rgb(0 0 0 / 40%), 0 12px 28px -2px rgb(0 0 0 / 40%);
+  --shadow-popover: 0 8px 24px #00000066, 0 2px 6px #00000040;
+  --shadow-panel: inset 0 0 0 1px rgb(255 255 255 / 4%), 0 8px 24px rgb(0 0 0 / 32%), 0 2px 6px rgb(0 0 0 / 20%);
+  --shadow-panel-lg: inset 0 0 0 1px rgb(255 255 255 / 4%), 0 4px 8px rgb(11 11 11 / 8%), 0 12px 28px -2px rgb(0 0 0 / 24%);
+  --bg-danger: #dc3c3d1f;
+  --danger-fill-hover: #c63637;
+  /* text is drawn slightly thinner in dark mode (360 / 395 / 480 for 400 / 435 / 520) */
+  --fw-normal: 360;
+  --fw-control: 395;
+  --fw-header: 480;
+
+  --code-selection: #0099ff4d;
+  --code-selection-match: #0099ff24;
+  --code-line: #ffffff0d;
+  --code-find: #ffd5008c;
+  --code-find-other: #ffd5002e;
+  --code-gutter: #5c5c5c;
+  --code-gutter-active: #ededed;
+  --code-cursor: #0099ff;
+
+  /* code tokens: Calamus Dark */
+  --code-fg: #eaecf0;
+  --syn-comment: #818898;
+  --syn-punct: #d3d7de;
+  --syn-keyword: #cc7bf4;
+  --syn-string: #9be963;
+  --syn-regex: #96e35f;
+  --syn-number: #5eeded;
+  --syn-property: #f47b85;
+  --syn-attr: #f0757f;
+  --syn-function: #70b8ff;
+  --syn-type: #fbad60;
+  --syn-param: #f7ab5f;
+  --bracket-1: #ffd014;
+  --bracket-2: #f3c0d3;
+  --bracket-3: #3bbd8c;
+}

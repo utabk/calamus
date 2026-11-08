@@ -1,0 +1,151 @@
+{
+  "name": "calamus",
+  "productName": "Calamus",
+  "version": "0.1.0",
+  "homepage": "https://github.com/utabk/calamus",
+  "repository": "github:utabk/calamus",
+  "license": "MIT",
+  "description": "A fast, keyboard-first code editor for macOS, Windows and Linux.",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n vite,electron -c gray,blue \"vite\" \"wait-on tcp:5199 && node scripts/electron.cjs --dev\"",
+    "web": "vite",
+    "build": "vite build",
+    "start": "vite build && node scripts/electron.cjs",
+    "typecheck": "tsc --noEmit",
+    "dist": "vite build && electron-builder --mac --arm64 -c.electronDist=node_modules/electron/dist",
+    "selftest": "vite build && node scripts/selftest.cjs",
+    "postinstall": "node scripts/postinstall.cjs",
+    "dist:dir": "vite build && electron-builder --mac dir --arm64 -c.electronDist=node_modules/electron/dist",
+    "theme-index": "node scripts/theme-index.mjs",
+    "dist:win": "vite build && electron-builder --win",
+    "dist:linux": "vite build && electron-builder --linux"
+  },
+  "build": {
+    "appId": "app.calamus.editor",
+    "productName": "Calamus",
+    "copyright": "Copyright © 2026",
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/node-pty/**",
+      "node_modules/typescript-language-server/**",
+      "node_modules/tsserver5/**"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "release.nosync"
+    },
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": false
+    },
+    "afterPack": "build/afterPack.cjs",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb",
+        "tar.gz"
+      ],
+      "icon": "build/icon.png",
+      "category": "Development",
+      "executableName": "calamus",
+      "synopsis": "A keyboard-first code editor",
+      "maintainer": "Calamus contributors"
+    }
+  },
+  "dependencies": {
+    "node-pty": "1.1.0",
+    "tsserver5": "npm:typescript@5.9.3",
+    "typescript-language-server": "6.0.2"
+  },
+  "devDependencies": {
+    "@codemirror/autocomplete": "6.20.4",
+    "@codemirror/commands": "6.11.1",
+    "@codemirror/lang-css": "6.3.1",
+    "@codemirror/lang-json": "6.0.2",
+    "@codemirror/language": "6.13.1",
+    "@codemirror/language-data": "6.5.2",
+    "@codemirror/lint": "6.9.7",
+    "@codemirror/lsp-client": "6.3.0",
+    "@codemirror/merge": "6.12.3",
+    "@codemirror/search": "6.7.2",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.15",
+    "@lezer/common": "1.5.5",
+    "@lezer/highlight": "1.2.5",
+    "@replit/codemirror-indentation-markers": "6.5.3",
+    "@shikijs/themes": "4.5.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.2.1",
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/addon-web-links": "0.12.0",
+    "@xterm/xterm": "6.0.0",
+    "concurrently": "10.0.7",
+    "diff": "9.0.0",
+    "dompurify": "3.4.17",
+    "electron": "44.7.0",
+    "electron-builder": "26.18.0",
+    "lucide-react": "1.70.0",
+    "marked": "18.1.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "typescript": "7.0.2",
+    "vite": "8.3.6",
+    "wait-on": "9.5.1"
+  },
+  "author": {
+    "name": "Calamus contributors"
+  }
+}
