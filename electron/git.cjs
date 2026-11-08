@@ -66,12 +66,24 @@ function run(args, cwd, extendedEnv, timeout = 120000) {
 module.exports = function setupGit({ ipcMain, guard, extendedEnv, folders }) {
   const trustedRepo = (repo) => !!repo && [repo.top, repo.gitDir, repo.commonDir].every((p) => folders.isTrusted(p));
 
+  // Before pinning, let git open the repository once on its own terms. That keeps git's
+  // ownership check (safe.directory), which GIT_DIR would skip, and confirms git sees the
+  // same git directory Calamus found.
+  async function gitAccepts(repo) {
+    const out = await git(['rev-parse', '--absolute-git-dir'], repo.top, extendedEnv);
+    return !!out && real(out.trim()) === repo.gitDir;
+  }
+
   // Untrusted folders act as "not a repository". The repository's work tree and git
   // directories must be trusted too, or git would run with config nobody trusted.
   async function toplevel(dir) {
     if (!folders.isTrusted(dir)) return null;
     const repo = findRepo(dir);
     if (!trustedRepo(repo)) return null;
+    const known = pinned.get(repo.top);
+    if (known && known.gitDir === repo.gitDir) return repo.top;
+    pinned.delete(repo.top);
+    if (!(await gitAccepts(repo))) return null;
     pinned.set(repo.top, { gitDir: repo.gitDir });
     return repo.top;
   }
@@ -223,13 +235,14 @@ module.exports = function setupGit({ ipcMain, guard, extendedEnv, folders }) {
     if (!folders.isTrusted(dir)) return false;
     const repo = findRepo(dir);
     if (!repo) return false;
-    // Never offer to trust the whole disk or home folder through a repository found above.
+    // Only ever offer the repository's own folder, and never the disk, the home folder or
+    // anything above it. Git directories named by repository files must already be inside it
+    // (or trusted); Calamus doesn't offer trust for paths those files point to.
     const home = real(os.homedir());
-    if ([repo.top, repo.gitDir, repo.commonDir].some((p) => p === path.parse(p).root || p === home)) return false;
-    for (const p of new Set([repo.top, repo.gitDir, repo.commonDir])) {
-      if (!folders.isTrusted(p) && !(await folders.ask(e.sender, p, { repo: true }))) return false;
-    }
-    return true;
+    const contains = (parent, child) => { const r = path.relative(parent, child); return r === '' || (!r.startsWith('..') && !path.isAbsolute(r)); };
+    if (repo.top === path.parse(repo.top).root || contains(repo.top, home)) return false;
+    if (![repo.gitDir, repo.commonDir].every((p) => contains(repo.top, p) || folders.isTrusted(p))) return false;
+    return folders.isTrusted(repo.top) || folders.ask(e.sender, repo.top, { repo: true });
   });
   ipcMain.handle('git:init', async (_e, root) => { const dir = guard(root); if (!folders.isTrusted(dir)) return { ok: false, out: '', error: 'Trust this folder first.' }; return run(['init'], dir, extendedEnv); });
 
